@@ -1,4 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class JustifyService {}
+export class JustifyService {
+  justifyText() {
+    return 'Justified text';
+  }
+}
