@@ -34,7 +34,7 @@ import { APP_PIPE } from '@nestjs/core';
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(bodyParser.text({ type: 'text/plain' }) as any)
+      .apply(bodyParser.text({ type: 'text/plain' })) // handle text/plain content type
       .forRoutes({ path: '/justify', method: RequestMethod.POST });
   }
 }
