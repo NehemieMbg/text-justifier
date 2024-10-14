@@ -1,4 +1,6 @@
 export class JustifyService {
+  constructor() {}
+
   /**
    * Justifies the given text to the specified maximum width.
    *
