@@ -7,7 +7,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { AuthService } from '../auth.service';
-import { User } from '../user.entity';
 
 export interface RequestWithUser extends Request {
   user: { sub: string | number; username: string };
@@ -37,9 +36,8 @@ export class AuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      const user: User = await this.authService.findOne(payload.username);
 
-      if (!user) {
+      if (!(await this.authService.findOne(payload.username))) {
         new UnauthorizedException();
       }
 
