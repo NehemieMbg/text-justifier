@@ -31,41 +31,51 @@ export class JustifyService {
     username: string,
     maxWidth: number = 80,
   ): Promise<string> {
-    const words: string[] = text.split(' ');
-    const wordCount: number = words.length;
+    const words = text.split(' ');
+    const wordCount = words.length;
 
-    const user: User = await this.authService.findOne(username);
-
+    const user = await this.authService.findOne(username);
     if (!user) {
-      throw new UnauthorizedException(
-        'User not found. Please create a token first.',
-      );
+      throw new UnauthorizedException();
     }
 
-    const todayDate: string = new Date().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    this.checkAndResetDailyWordCount(user);
 
-    // Check if the user's justification is for today
-    if (user.lastJustified !== todayDate) {
-      user.dailyWordCount = 0; // Reset word count if it's a new day
-      user.lastJustified = todayDate;
-    }
-
-    // Verify if adding new words exceeds the daily limit
-    if (user.dailyWordCount + wordCount > this.maxWordsPerDay) {
+    if (this.exceedsDailyLimit(user.dailyWordCount, wordCount)) {
       throw new HttpException(
         'Daily word limit exceeded (80,000 words)',
         HttpStatus.PAYMENT_REQUIRED,
       );
     }
 
-    // Update the user's word count
     user.dailyWordCount += wordCount;
-
-    // Save the user with updated word count and date
     await this.userRepository.save(user);
 
-    // Return justified text
     return this.fullJustify(words, maxWidth);
+  }
+
+  /**
+   * Checks if the user's daily word count needs to be reset.
+   *
+   * @param {User} user - The user object.
+   */
+  private checkAndResetDailyWordCount(user: User): void {
+    const todayDate = new Date().toISOString().split('T')[0];
+    if (user.lastJustified !== todayDate) {
+      user.dailyWordCount = 0;
+      user.lastJustified = todayDate;
+    }
+  }
+
+  /**
+   * Checks if the new word count exceeds the daily limit.
+   *
+   * @param {number} currentCount - The current daily word count.
+   * @param {number} newCount - The new word count to be added.
+   * @returns {boolean} - True if the new count exceeds the limit, false otherwise.
+   */
+  private exceedsDailyLimit(currentCount: number, newCount: number): boolean {
+    return currentCount + newCount > this.maxWordsPerDay;
   }
 
   /**
