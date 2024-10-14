@@ -1,7 +1,6 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateTokenDto } from './dto/auth-post.dto';
-import { AuthGuard } from './guards/auth.guard';
 
 /**
  * AuthController handles the authentication-related routes.
@@ -21,12 +20,5 @@ export class AuthController {
   @Post()
   createToken(@Body() body: CreateTokenDto) {
     return this.authService.createToken(body.email);
-  }
-
-  //? temporary
-  @Get('/verify')
-  @UseGuards(AuthGuard)
-  verifyToken() {
-    return 'Token is valid';
   }
 }
