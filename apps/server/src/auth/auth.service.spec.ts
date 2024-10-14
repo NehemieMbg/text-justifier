@@ -2,20 +2,41 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { InternalServerErrorException } from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { User } from './user.entity';
+
+const mockUserRepository = {
+  findOne: jest.fn(),
+  save: jest.fn(),
+  create: jest.fn().mockReturnValue({}),
+};
 
 describe('AuthService', () => {
   let service: AuthService;
   let jwtService: JwtService;
 
-  const user = { id: 12345, email: 'naomie.liu@gmail.com' };
+  const user = {
+    id: 12345,
+    email: 'naomie.liu@gmail.com',
+    username: 'naomie.liu@gmail.com',
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
+          provide: getRepositoryToken(User),
+          useValue: mockUserRepository,
+        },
+        {
           provide: JwtService,
-          useValue: new JwtService({ secret: 'secret_key_test' }),
+          useValue: {
+            signAsync: jest.fn().mockResolvedValue('mocked_token'), // Mocking signAsync
+            verifyAsync: jest
+              .fn()
+              .mockResolvedValue({ sub: user.id, username: user.email }), // Mocking verifyAsync
+          },
         },
       ],
     }).compile();
@@ -30,14 +51,22 @@ describe('AuthService', () => {
 
   describe('createToken', () => {
     it('should create a token successfully', async () => {
+      mockUserRepository.findOne.mockResolvedValue(user);
+
       const result = await service.createToken(user.email);
 
-      expect(result).toEqual({ access_token: expect.any(String) });
+      expect(result).toEqual({ access_token: 'mocked_token' }); // Match the mocked token
+      expect(jwtService.signAsync).toHaveBeenCalled(); // Check if signAsync was called
+      expect(jwtService.signAsync).toHaveBeenCalledWith({
+        sub: user.id,
+        username: user.email,
+      });
     });
 
     it('should create a token with the correct payload', async () => {
-      const userToken = await service.createToken(user.email);
+      mockUserRepository.findOne.mockResolvedValue(user);
 
+      const userToken = await service.createToken(user.email);
       const payload = await jwtService.verifyAsync(userToken.access_token);
 
       expect(payload).toHaveProperty('sub');
@@ -45,12 +74,14 @@ describe('AuthService', () => {
     });
 
     it('should throw an InternalServerErrorException if not valid secret key', async () => {
-      const fakeJwtService = new JwtService();
-
-      // ? This is a way to mock the signAsync method of the JwtService
+      const fakeJwtService = new JwtService(); // No valid secret key for this instance.
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           AuthService,
+          {
+            provide: getRepositoryToken(User),
+            useValue: mockUserRepository,
+          },
           {
             provide: JwtService,
             useValue: fakeJwtService,
@@ -59,21 +90,32 @@ describe('AuthService', () => {
       }).compile();
 
       const fakeService = module.get<AuthService>(AuthService);
+      mockUserRepository.findOne.mockResolvedValue(user);
 
-      expect(fakeService).toBeDefined();
-      // ? We expect the createToken method to throw an InternalServerErrorException
       await expect(fakeService.createToken(user.email)).rejects.toThrow(
         InternalServerErrorException,
       );
     });
   });
 
-  describe('generateRandomId', () => {
-    it('should generate a random ID', async () => {
-      const result = await service['generateRandomId']();
+  describe('findOneOrCreate', () => {
+    it('should find an existing user', async () => {
+      mockUserRepository.findOne.mockResolvedValue(user);
 
-      expect(result).toBeGreaterThanOrEqual(0);
-      expect(result).toBeLessThanOrEqual(1000000);
+      const foundUser = await service.findOneOrCreate(user.email);
+
+      expect(foundUser).toEqual(user);
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { username: user.email },
+      });
+    });
+
+    it('should throw an InternalServerErrorException if an error occurs', async () => {
+      mockUserRepository.findOne.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.findOneOrCreate(user.email)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });
