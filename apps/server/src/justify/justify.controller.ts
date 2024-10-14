@@ -19,7 +19,6 @@ export class JustifyController {
     @Body() text: string,
     @Request() request: RequestWithUser,
   ): Promise<string> {
-    const userUsername: string = request.user.username;
-    return this.justifyService.justifyText(text, userUsername);
+    return this.justifyService.justifyText(text, request.user.username);
   }
 }
