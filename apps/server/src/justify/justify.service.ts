@@ -1,23 +1,79 @@
+import { User } from '../auth/user.entity';
+import {
+  HttpException,
+  HttpStatus,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { AuthService } from '../auth/auth.service';
+
 export class JustifyService {
-  constructor() {}
+  private readonly maxWordsPerDay: number = 80_000;
+
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly authService: AuthService,
+  ) {}
 
   /**
    * Justifies the given text to the specified maximum width.
    *
-   * @param text - The text to be justified.
-   * @param maxWidth - The maximum width of each line. Default is 80.
-   * @returns The justified text.
+   * @param {string} text - The text to be justified.
+   * @param {string} username - The username of the user requesting justification.
+   * @param {number} [maxWidth=80] - The maximum width of each line. Default is 80.
+   * @returns {Promise<string>} - The justified text.
+   * @throws {HttpException} - If the daily word limit is exceeded.
    */
-  justifyText(text: string, maxWidth: number = 80): string {
-    return this.fullJustify(text.split(' '), maxWidth);
+  async justifyText(
+    text: string,
+    username: string,
+    maxWidth: number = 80,
+  ): Promise<string> {
+    const words: string[] = text.split(' ');
+    const wordCount: number = words.length;
+
+    const user: User = await this.authService.findOne(username);
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'User not found. Please create a token first.',
+      );
+    }
+
+    const todayDate: string = new Date().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+
+    // Check if the user's justification is for today
+    if (user.lastJustified !== todayDate) {
+      user.dailyWordCount = 0; // Reset word count if it's a new day
+      user.lastJustified = todayDate;
+    }
+
+    // Verify if adding new words exceeds the daily limit
+    if (user.dailyWordCount + wordCount > this.maxWordsPerDay) {
+      throw new HttpException(
+        'Daily word limit exceeded (80,000 words)',
+        HttpStatus.PAYMENT_REQUIRED,
+      );
+    }
+
+    // Update the user's word count
+    user.dailyWordCount += wordCount;
+
+    // Save the user with updated word count and date
+    await this.userRepository.save(user);
+
+    // Return justified text
+    return this.fullJustify(words, maxWidth);
   }
 
   /**
    * Fully justifies the given words to the specified maximum width.
    *
-   * @param words - The words to be justified.
-   * @param maxWidth - The maximum width of each line.
-   * @returns The fully justified text.
+   * @param {string[]} words - The words to be justified.
+   * @param {number} maxWidth - The maximum width of each line.
+   * @returns {string} - The fully justified text.
    */
   private fullJustify(words: string[], maxWidth: number): string {
     const result: string[] = [];

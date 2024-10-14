@@ -6,10 +6,19 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { AuthService } from '../auth.service';
+import { User } from '../user.entity';
+
+export interface RequestWithUser extends Request {
+  user: { sub: string | number; username: string };
+}
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private authService: AuthService,
+  ) {}
 
   /**
    * Determines if the request can proceed based on the presence and validity of a JWT token.
@@ -20,7 +29,7 @@ export class AuthGuard implements CanActivate {
    */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const token = this.extractTokenFromHeader(request);
+    const token: string = this.extractTokenFromHeader(request);
 
     if (!token) {
       throw new UnauthorizedException();
@@ -28,10 +37,17 @@ export class AuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
+      const user: User = await this.authService.findOne(payload.username);
+
+      if (!user) {
+        new UnauthorizedException();
+      }
+
       request['user'] = payload;
     } catch {
       throw new UnauthorizedException();
     }
+
     return true;
   }
 

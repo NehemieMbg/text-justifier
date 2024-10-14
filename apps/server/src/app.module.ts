@@ -6,18 +6,31 @@ import {
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as bodyParser from 'body-parser';
-import { AuthModule } from './auth/auth.module';
+
 import { JustifyModule } from './justify/justify.module';
-import { RateLimitingModule } from './rate-limiting/rate-limiting.module';
 import { APP_PIPE } from '@nestjs/core';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './auth/user.entity';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     AuthModule,
     JustifyModule,
-    RateLimitingModule,
     ConfigModule.forRoot({
       isGlobal: true, // Makes config accessible globally without needing to import it in every module
+    }),
+
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DATABASE_HOST,
+      port: Number(process.env.DATABASE_PORT),
+      username: process.env.DATABASE_USERNAME,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE,
+      entities: [User],
+      synchronize: true, // only in dev mode
+      // logging: true, // Enable logging for debugging
     }),
   ],
   controllers: [],
