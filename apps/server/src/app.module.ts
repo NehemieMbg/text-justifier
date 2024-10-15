@@ -7,20 +7,26 @@ import {
 import { ConfigModule } from '@nestjs/config';
 import * as bodyParser from 'body-parser';
 
-import { JustifyModule } from './justify/justify.module';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './auth/user.entity';
 import { AuthModule } from './auth/auth.module';
+import { JustifyModule } from './justify/justify.module';
+import { User } from './auth/user.entity';
 
 @Module({
   imports: [
     AuthModule,
     JustifyModule,
     ConfigModule.forRoot({
-      isGlobal: true, // Makes config accessible globally without needing to import it in every module
+      isGlobal: true,
     }),
-
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 20,
+      },
+    ]),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DATABASE_HOST,
@@ -29,7 +35,7 @@ import { AuthModule } from './auth/auth.module';
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE,
       entities: [User],
-      synchronize: true, // only in dev mode
+      synchronize: true,
       // logging: true, // Enable logging for debugging
     }),
   ],
@@ -39,8 +45,12 @@ import { AuthModule } from './auth/auth.module';
       // Enable validation globally
       provide: APP_PIPE,
       useValue: new ValidationPipe({
-        whitelist: true, // makes sure incoming requests don't have extra fields
+        whitelist: true,
       }),
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
