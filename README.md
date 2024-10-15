@@ -80,7 +80,10 @@ To set up the project locally, follow these steps:
    To configure the application, create a .env file in the root of the project with the following variables:
 
    ```env
+
    # Database variables
+   DATABASE_URL
+   # or
    DATABASE_HOST=
    DATABASE_PORT=
    DATABASE_USERNAME=
@@ -89,6 +92,7 @@ To set up the project locally, follow these steps:
 
    # JWT Token variables
    JWT_SECRET=
+   # only for tests
    ACCESS_TOKEN=
    ```
 
