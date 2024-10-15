@@ -12,7 +12,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { JustifyModule } from './justify/justify.module';
-import { User } from './auth/user.entity';
+// import { User } from './auth/user.entity';
 
 @Module({
   imports: [
@@ -29,15 +29,21 @@ import { User } from './auth/user.entity';
     ]),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DATABASE_HOST,
-      port: Number(process.env.DATABASE_PORT),
-      username: process.env.DATABASE_USERNAME,
-      password: process.env.DATABASE_PASSWORD,
-      database: process.env.DATABASE,
-      entities: [User],
-      synchronize: true,
-      // logging: true, // Enable logging for debugging
+      url: process.env.DATABASE_URL, // Use the public URL
+      autoLoadEntities: true,
+      synchronize: true, // Disable in production
     }),
+    // TypeOrmModule.forRoot({
+    //   type: 'postgres',
+    //   host: process.env.DATABASE_HOST,
+    //   port: Number(process.env.DATABASE_PORT),
+    //   username: process.env.DATABASE_USERNAME,
+    //   password: process.env.DATABASE_PASSWORD,
+    //   database: process.env.DATABASE,
+    //   entities: [User],
+    //   synchronize: true,
+    //   // logging: true, // Enable logging for debugging
+    // }),
   ],
   controllers: [],
   providers: [
