@@ -65,8 +65,8 @@ To set up the project locally, follow these steps:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/justification-api.git
-   cd justification-api
+   git clone https://github.com/NehemieMbg/text-justifier.git
+   cd apps/server
    ```
 
 2. Install dependencies:
